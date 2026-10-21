@@ -1,4 +1,8 @@
 <script setup lang="ts">
+/**
+ * @file App.vue
+ * Root application component wrapping the global layout structure, application header, and router view.
+ */
 import { RouterView } from 'vue-router'
 import Header from '@/components/layout/Header.vue'
 </script>

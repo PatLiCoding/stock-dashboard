@@ -1,4 +1,9 @@
 <script setup lang="ts">
+/**
+ * @file RevenueCard.vue
+ * Renders a horizontal carousel displaying individual stock revenue cards for each company,
+ * including latest quarterly metrics, growth indicators, and smooth scrolling controls.
+ */
 import { ref, computed, onMounted, nextTick } from 'vue'
 import BaseCard from '../layout/BaseCard.vue'
 import stockData from '@/assets/data/stock.json'
@@ -10,8 +15,14 @@ const scrollContainer = ref<HTMLElement | null>(null)
 const canScrollLeft = ref(false)
 const canScrollRight = ref(true)
 
+/**
+ * Formats a numeric value with a explicit sign (+/-) and 2 decimal places.
+ * @param value - The numerical value to format
+ * @returns Formatted string with sign prefix
+ */
 const formatSigned = (value: number) => `${value > 0 ? '+' : ''}${value.toFixed(2)}`
 
+/** Computed list of mapped company card items with calculated revenue changes and growth states. */
 const cards = computed(() =>
   companies.map((company) => {
     const latest = company.revenue.at(-1) ?? 0
@@ -32,6 +43,7 @@ const cards = computed(() =>
   }),
 )
 
+/** Checks the scroll position of the container to toggle navigation button visibility. */
 const checkScroll = () => {
   if (!scrollContainer.value) return
   const { scrollLeft, scrollWidth, clientWidth } = scrollContainer.value
@@ -39,6 +51,10 @@ const checkScroll = () => {
   canScrollRight.value = scrollLeft < scrollWidth - clientWidth - 5
 }
 
+/**
+ * Scrolls the container smoothly by a specified pixel offset.
+ * @param left - Pixel amount to scroll horizontally
+ */
 const scrollBy = (left: number) => {
   scrollContainer.value?.scrollBy({ left, behavior: 'smooth' })
 }

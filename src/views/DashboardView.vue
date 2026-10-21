@@ -1,4 +1,8 @@
 <script setup lang="ts">
+/**
+ * @file MainView.vue
+ * Main dashboard container assembling the revenue carousel, line chart, and breakdown donut chart components.
+ */
 import RevenueCard from '@/components/stocks/RevenueCard.vue'
 import RevenueChart from '@/components/stocks/RevenueChart.vue'
 import RevenueBreakdown from '@/components/stocks/RevenueBreakdown.vue'

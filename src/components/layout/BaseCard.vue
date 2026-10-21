@@ -1,4 +1,9 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+/**
+ * @file BaseCard.vue
+ * Reusable wrapper container component providing standard background styling and rounded corners for content cards.
+ */
+</script>
 
 <template>
   <div class="BaseCard">
@@ -8,7 +13,6 @@
 
 <style scoped>
 .BaseCard {
-  /* padding: 20px 32px; */
   border-radius: 16px;
   background-color: #011f35;
 }

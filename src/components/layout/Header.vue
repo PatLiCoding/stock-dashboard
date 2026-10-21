@@ -1,4 +1,9 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+/**
+ * @file Header.vue
+ * Application header component featuring a decorative design bar and main title text.
+ */
+</script>
 
 <template>
   <header class="header">

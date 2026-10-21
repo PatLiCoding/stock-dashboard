@@ -6,14 +6,26 @@
 import RevenueCard from '@/components/stocks/RevenueCard.vue'
 import RevenueChart from '@/components/stocks/RevenueChart.vue'
 import RevenueBreakdown from '@/components/stocks/RevenueBreakdown.vue'
+import NetIncomeChart from '@/components/stocks/NetIncomeChart.vue'
+import GrossMarginChart from '@/components/stocks/GrossMarginChart.vue'
+import RevenueGrowthChart from '@/components/stocks/RevenueGrowthChart.vue'
 </script>
 
 <template>
   <main>
     <RevenueCard />
+
     <section class="chart-row">
       <RevenueChart />
       <RevenueBreakdown />
+    </section>
+
+    <section class="chart-row">
+      <div class="chart-income-margin">
+        <NetIncomeChart />
+        <GrossMarginChart />
+      </div>
+      <RevenueGrowthChart />
     </section>
   </main>
 </template>
@@ -24,9 +36,11 @@ main {
   display: flex;
   flex-direction: column;
   gap: 32px;
+  margin-bottom: 200px;
 }
 
-.chart-row {
+.chart-row,
+.chart-income-margin {
   display: flex;
   gap: 24px;
   align-items: stretch;

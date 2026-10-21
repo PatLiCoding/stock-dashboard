@@ -1,43 +1,49 @@
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import BaseCard from '../layout/BaseCard.vue'
 import stockData from '@/assets/data/stock.json'
+import type { Company } from '@/interface/interface.ts'
 
-const companies = ref(stockData.companies)
+const companies: Company[] = stockData.companies
 const scrollContainer = ref<HTMLElement | null>(null)
 
 const canScrollLeft = ref(false)
 const canScrollRight = ref(true)
 
-const getLatestRevenue = (revenueArray: number[]) => {
-  return revenueArray[revenueArray.length - 1] ?? 0
-}
+const formatSigned = (value: number) => `${value > 0 ? '+' : ''}${value.toFixed(2)}`
+
+const cards = computed(() =>
+  companies.map((company) => {
+    const latest = company.revenue.at(-1) ?? 0
+    const previous = company.revenue.at(-2) ?? 0
+    const absChange = latest - previous
+    const pctChange = previous !== 0 ? (absChange / previous) * 100 : 0
+
+    return {
+      ticker: company.ticker,
+      name: company.name,
+      logoUrl: company.logoUrl,
+      latestQuarter: company.latestQuarter,
+      latest,
+      absChange,
+      pctChange,
+      isPositive: absChange >= 0,
+    }
+  }),
+)
 
 const checkScroll = () => {
   if (!scrollContainer.value) return
   const { scrollLeft, scrollWidth, clientWidth } = scrollContainer.value
-
   canScrollLeft.value = scrollLeft > 5
   canScrollRight.value = scrollLeft < scrollWidth - clientWidth - 5
 }
 
-const scrollLeftHandler = () => {
-  if (scrollContainer.value) {
-    scrollContainer.value.scrollBy({ left: -300, behavior: 'smooth' })
-  }
+const scrollBy = (left: number) => {
+  scrollContainer.value?.scrollBy({ left, behavior: 'smooth' })
 }
 
-const scrollRightHandler = () => {
-  if (scrollContainer.value) {
-    scrollContainer.value.scrollBy({ left: 300, behavior: 'smooth' })
-  }
-}
-
-onMounted(() => {
-  nextTick(() => {
-    checkScroll()
-  })
-})
+onMounted(() => nextTick(checkScroll))
 </script>
 
 <template>
@@ -45,27 +51,27 @@ onMounted(() => {
     <button
       v-if="canScrollLeft"
       class="scroll-btn left"
-      @click="scrollLeftHandler"
+      @click="scrollBy(-300)"
       aria-label="Previous"
     >
       <span>&#129128;</span>
     </button>
 
     <div class="RevenueCard" ref="scrollContainer" @scroll="checkScroll">
-      <BaseCard v-for="company in companies" :key="company.ticker" class="stock-card">
+      <BaseCard v-for="card in cards" :key="card.ticker" class="stock-card">
         <div class="card-header">
-          <img :src="company.logoUrl" :alt="company.name" class="logo" />
-          <h3>{{ company.name }}</h3>
+          <img :src="card.logoUrl" :alt="card.name" class="logo" />
+          <h3>{{ card.name }}</h3>
         </div>
 
         <div class="card-body">
-          <p class="subtitle">Revenue {{ company.latestQuarter }}</p>
+          <p class="subtitle">Revenue {{ card.latestQuarter }}</p>
           <div class="revenue-row">
-            <span class="amount">{{ getLatestRevenue(company.revenue).toFixed(2) }}</span>
+            <span class="amount">{{ card.latest.toFixed(2) }}</span>
 
-            <div class="growth positive">
-              <span>+1.06 ↑</span>
-              <span>2.83 %</span>
+            <div class="growth" :class="card.isPositive ? 'positive' : 'negative'">
+              <span>{{ formatSigned(card.absChange) }} {{ card.isPositive ? '↑' : '↓' }}</span>
+              <span>{{ card.pctChange.toFixed(2) }} %</span>
             </div>
           </div>
           <p class="currency">In Bill USD</p>
@@ -73,12 +79,7 @@ onMounted(() => {
       </BaseCard>
     </div>
 
-    <button
-      v-if="canScrollRight"
-      class="scroll-btn right"
-      @click="scrollRightHandler"
-      aria-label="Next"
-    >
+    <button v-if="canScrollRight" class="scroll-btn right" @click="scrollBy(300)" aria-label="Next">
       <span>&#129130;</span>
     </button>
   </div>

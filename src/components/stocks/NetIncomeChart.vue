@@ -1,25 +1,29 @@
 <script setup lang="ts">
 /**
  * @file NetIncomeChart.vue
- * Renders a horizontal bar chart displaying Net Income TTM for the Magnificent Seven companies.
+ * Renders a horizontal bar chart displaying Net Income TTM (in Billion USD) for the Magnificent Seven.
  */
 import { computed } from 'vue'
 import BaseCard from '../layout/BaseCard.vue'
 import stockData from '@/assets/data/stock.json'
 import type { Company } from '@/interface/interface.ts'
-import { getTtm, BLUE_SHADES } from '@/utils/stock'
+import { getTtm, getNiceScale, BLUE_SHADES, DEFAULT_COLOR } from '@/utils/stock'
 
-const W = 320
-const H = 190
-const M = { top: 8, right: 36, bottom: 25, left: 62 }
-
+// Chart geometry (viewBox units ≈ px in the 1440px layout)
+const W = 354
+const H = 210
+const M = { top: 6, right: 8, bottom: 24, left: 62 }
 const plotW = W - M.left - M.right
 const plotH = H - M.top - M.bottom
 
+/** Share of a row's height that is covered by the bar. */
+const BAR_RATIO = 0.74
+
 const companies: Company[] = stockData.companies
 
-const chartItems = computed(() => {
-  return companies
+/** Companies sorted by TTM net income (descending), colored from light to dark blue. */
+const chartItems = computed(() =>
+  companies
     .map((c) => ({
       ticker: c.ticker,
       name: c.name,
@@ -28,25 +32,24 @@ const chartItems = computed(() => {
     .sort((a, b) => b.value - a.value)
     .map((item, index) => ({
       ...item,
-      color: BLUE_SHADES[index] ?? BLUE_SHADES[BLUE_SHADES.length - 1],
-    }))
-})
+      color: BLUE_SHADES[index] ?? DEFAULT_COLOR,
+    })),
+)
 
-const xMax = computed(() => {
-  const maxVal = Math.max(...chartItems.value.map((i) => i.value), 1)
-  return Math.ceil((maxVal * 1.15) / 10) * 10
-})
+/** X scale (with a little headroom so the value label always fits inside the frame). */
+const scale = computed(() =>
+  getNiceScale(0, Math.max(...chartItems.value.map((i) => i.value)) * 1.1),
+)
 
-const xTicks = computed(() => {
-  const max = xMax.value
-  return [0, Math.round(max * 0.25), Math.round(max * 0.5), Math.round(max * 0.75), max]
-})
+const rowCount = companies.length
+const rowH = plotH / rowCount
+const barH = rowH * BAR_RATIO
 
-const barHeight = 11
-const rowGap = (plotH - chartItems.value.length * barHeight) / (chartItems.value.length + 1)
+/** Y positions of the horizontal grid lines (one between every row + top/bottom frame). */
+const rowLines = Array.from({ length: rowCount + 1 }, (_, i) => M.top + i * rowH)
 
-const xPos = (v: number) => M.left + (Math.max(0, v) / xMax.value) * plotW
-const yPos = (index: number) => M.top + rowGap + index * (barHeight + rowGap)
+const xPos = (v: number) => M.left + (Math.max(0, v) / scale.value.max) * plotW
+const barY = (index: number) => M.top + index * rowH + (rowH - barH) / 2
 </script>
 
 <template>
@@ -58,51 +61,48 @@ const yPos = (index: number) => M.top + rowGap + index * (barHeight + rowGap)
         :viewBox="`0 0 ${W} ${H}`"
         preserveAspectRatio="xMidYMid meet"
         role="img"
-        aria-label="Net Income TTM bar chart"
+        aria-label="Net Income TTM in billion USD per company"
       >
-        <!-- Grid lines + X labels -->
+        <!-- Grid: horizontal row lines + vertical tick lines + X labels -->
         <g>
-          <template v-for="t in xTicks" :key="t">
-            <line
-              :x1="M.left + (t / xMax) * plotW"
-              :x2="M.left + (t / xMax) * plotW"
-              :y1="M.top"
-              :y2="M.top + plotH"
-              class="grid"
-            />
-            <text
-              :x="M.left + (t / xMax) * plotW"
-              :y="M.top + plotH + 16"
-              text-anchor="middle"
-              class="axis-label"
-            >
+          <line
+            v-for="y in rowLines"
+            :key="`row-${y}`"
+            :x1="M.left"
+            :x2="M.left + plotW"
+            :y1="y"
+            :y2="y"
+            class="grid"
+          />
+          <template v-for="t in scale.ticks" :key="t">
+            <line :x1="xPos(t)" :x2="xPos(t)" :y1="M.top" :y2="M.top + plotH" class="grid" />
+            <text :x="xPos(t)" :y="M.top + plotH + 15" text-anchor="middle" class="axis-label">
               {{ t }}
             </text>
           </template>
         </g>
 
-        <!-- Bars, Company labels & Values outside -->
+        <!-- Bars, company labels & values -->
         <g v-for="(item, i) in chartItems" :key="item.ticker">
           <text
-            :x="M.left - 10"
-            :y="yPos(i) + barHeight / 2 + 4"
+            :x="M.left - 8"
+            :y="barY(i) + barH / 2"
             text-anchor="end"
-            class="axis-label company-label"
+            class="axis-label label-mid"
           >
             {{ item.name }}
           </text>
 
           <rect
             :x="M.left"
-            :y="yPos(i)"
-            :width="Math.min((item.value / xMax) * plotW, plotW)"
-            :height="barHeight"
-            class="bar"
+            :y="barY(i)"
+            :width="xPos(item.value) - M.left"
+            :height="barH"
             :fill="item.color"
+            class="bar"
           />
 
-          <!-- Wert außerhalb des Balkens rechts -->
-          <text :x="xPos(item.value) + 6" :y="yPos(i) + barHeight / 2 + 4" class="bar-value">
+          <text :x="xPos(item.value) + 6" :y="barY(i) + barH / 2" class="bar-value label-mid">
             {{ item.value.toFixed(2) }}
           </text>
         </g>
@@ -115,20 +115,18 @@ const yPos = (index: number) => M.top + rowGap + index * (barHeight + rowGap)
 .net-income-card {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 16px;
+  gap: 16px;
+  padding: 20px;
   min-width: 0;
-  flex: 1.4;
-  background: #002238;
-  border: 1px solid rgba(57, 218, 255, 0.08);
+  flex: 1.34;
 }
 
 .title {
   margin: 0;
   font-family: Rubik, sans-serif;
   font-weight: 600;
-  font-size: 14px;
-  color: #f1f5f9;
+  font-size: 20px;
+  color: #ffffff;
 }
 
 .chart-body {
@@ -139,9 +137,9 @@ const yPos = (index: number) => M.top + rowGap + index * (barHeight + rowGap)
 }
 
 svg {
+  display: block;
   width: 100%;
   height: auto;
-  display: block;
 }
 
 .grid {
@@ -151,27 +149,23 @@ svg {
 
 .axis-label {
   fill: rgba(255, 255, 255, 0.75);
-  font-size: 8px;
+  font-size: 8.5px;
 }
 
-.company-label {
-  font-size: 8px;
+.label-mid {
+  dominant-baseline: central;
 }
 
 .bar {
+  stroke: #ffffff;
+  stroke-width: 1;
   rx: 1;
 }
 
 .bar-value {
   fill: rgba(255, 255, 255, 0.9);
-  font-size: 8px;
+  font-size: 8.5px;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
-}
-
-@media (max-width: 480px) {
-  .net-income-card {
-    padding: 12px;
-  }
 }
 </style>

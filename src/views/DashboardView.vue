@@ -47,7 +47,7 @@ main {
 }
 
 .chart-row > :first-child {
-  flex: 1.8;
+  flex: 1.46;
 }
 
 .chart-row > :last-child {

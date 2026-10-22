@@ -67,3 +67,30 @@ export const getRevenueRanking = (companies: { ticker: string; revenue: number[]
  */
 export const getRankColor = (ranking: string[], ticker: string): string =>
   BLUE_SHADES[ranking.indexOf(ticker)] ?? DEFAULT_COLOR
+
+/**
+ * Computes a "nice" axis scale (rounded min/max and evenly spaced ticks) for a value range.
+ * The range always includes 0, so bars have a baseline.
+ *
+ * @param min - Smallest data value (may be negative)
+ * @param max - Largest data value
+ * @param targetTicks - Approximate number of intervals on the axis
+ * @returns Rounded axis minimum, maximum and the tick values in between
+ */
+export const getNiceScale = (min: number, max: number, targetTicks = 6) => {
+  const lo = Math.min(min, 0)
+  const hi = Math.max(max, 0)
+  const raw = Math.max(hi - lo, 1) / targetTicks
+  const magnitude = 10 ** Math.floor(Math.log10(raw))
+  const step = [1, 2, 2.5, 5, 10].map((m) => m * magnitude).find((s) => s >= raw) ?? 10 * magnitude
+
+  const niceMin = Math.floor(lo / step) * step
+  const niceMax = Math.max(Math.ceil(hi / step) * step, niceMin + step)
+
+  const ticks: number[] = []
+  for (let v = niceMin; v <= niceMax + step / 2; v += step) {
+    ticks.push(Math.round(v * 100) / 100)
+  }
+
+  return { min: niceMin, max: niceMax, ticks }
+}

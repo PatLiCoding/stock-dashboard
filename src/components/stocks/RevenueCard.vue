@@ -135,7 +135,6 @@ onMounted(() => nextTick(checkScroll))
 .stock-card {
   flex: none;
   min-width: 140px;
-  height: 127px;
   padding: 20px 24px;
   box-sizing: border-box;
   scroll-snap-align: start;

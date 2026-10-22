@@ -37,7 +37,6 @@ main {
   display: flex;
   flex-direction: column;
   gap: 32px;
-  margin-bottom: 200px;
 }
 
 .chart-row,
@@ -84,7 +83,6 @@ main {
   .chart-row > :first-child,
   .chart-row > :last-child {
     flex: none;
-    width: 100%;
   }
 }
 

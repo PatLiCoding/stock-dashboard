@@ -13,6 +13,7 @@
 
 <style scoped>
 .BaseCard {
+  box-sizing: border-box;
   border-radius: 16px;
   background-color: #011f35;
 }

@@ -9,6 +9,7 @@ import BaseCard from '../layout/BaseCard.vue'
 import stockData from '@/assets/data/stock.json'
 import type { Company } from '@/interface/interface.ts'
 import { getRankColor, getRevenueRanking, getTtm } from '@/utils/stock'
+import { useElementWidth } from '@/composables/useElementWidth'
 
 // Donut geometry (viewBox units)
 const SIZE = 240
@@ -16,6 +17,9 @@ const CX = SIZE / 2
 const CY = SIZE / 2
 const R_OUT = 112
 const R_IN = 66
+
+/** Below this body width the legend moves below the donut. */
+const STACK_BELOW_W = 340
 
 // Tooltip dimensions (px)
 const TOOLTIP_W = 200
@@ -89,6 +93,8 @@ const slices = computed(() => {
 
 // Hover / tap state management
 const bodyRef = ref<HTMLElement | null>(null)
+const bodyWidth = useElementWidth(bodyRef, 400)
+const stacked = computed(() => bodyWidth.value < STACK_BELOW_W)
 const hoveredTicker = ref<string | null>(null)
 const tooltipPos = ref({ left: 0, top: 0 })
 
@@ -139,7 +145,7 @@ const onLeave = (e: PointerEvent) => {
   <BaseCard class="breakdown-card">
     <h2 class="title">Revenue Breakdown Magnificent Seven</h2>
 
-    <div ref="bodyRef" class="chart-body" @pointermove="onMove">
+    <div ref="bodyRef" class="chart-body" :class="{ stacked }" @pointermove="onMove">
       <svg
         class="donut"
         :viewBox="`0 0 ${SIZE} ${SIZE}`"
@@ -220,15 +226,24 @@ const onLeave = (e: PointerEvent) => {
   position: relative;
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  justify-content: center;
   gap: 24px 32px;
 }
 
+.chart-body.stacked {
+  flex-direction: column;
+}
+
 .donut {
-  flex: none;
+  flex: 0 1 260px;
   width: 100%;
+  min-width: 140px;
   max-width: 260px;
   height: auto;
+}
+
+.stacked .donut {
+  flex: none;
 }
 
 .slice {
@@ -243,6 +258,7 @@ const onLeave = (e: PointerEvent) => {
 }
 
 .legend {
+  flex: none;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -251,6 +267,13 @@ const onLeave = (e: PointerEvent) => {
   gap: 8px;
   font-size: 12px;
   color: rgba(255, 255, 255, 0.85);
+}
+
+.stacked .legend {
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 16px;
 }
 
 .legend li {
@@ -318,10 +341,6 @@ const onLeave = (e: PointerEvent) => {
 
   .title {
     font-size: 18px;
-  }
-
-  .chart-body {
-    justify-content: center;
   }
 }
 </style>

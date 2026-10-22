@@ -37,7 +37,8 @@ const plotWidth = useElementWidth(plotRef, 520)
 
 const stacked = computed(() => bodyWidth.value < STACK_BELOW_W)
 const W = computed(() => Math.max(plotWidth.value, MIN_W))
-const H = computed(() => (W.value < 400 ? 240 : 280))
+/** Height follows the width (aspect ratio of the design: 520 × 280), limited to 220–360 px. */
+const H = computed(() => Math.min(360, Math.max(220, Math.round(W.value * 0.54))))
 const plotW = computed(() => W.value - M.left - M.right)
 const plotH = computed(() => H.value - M.top - M.bottom)
 const stepX = computed(() => plotW.value / (QUARTER_COUNT - 1))
@@ -289,7 +290,6 @@ const tooltipRows = computed(() => {
   position: relative;
   flex: 1;
   min-width: 0;
-  /* Allow vertical page scroll on touch, horizontal drag scrubs through the quarters */
   touch-action: pan-y;
 }
 

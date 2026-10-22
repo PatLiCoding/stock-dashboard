@@ -23,5 +23,7 @@ import Header from '@/components/layout/Header.vue'
   min-width: 0;
   min-height: 100vh;
   gap: 12px;
+  margin-top: 80px;
+  margin-bottom: 80px;
 }
 </style>

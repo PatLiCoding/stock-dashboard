@@ -1,7 +1,8 @@
 <script setup lang="ts">
 /**
- * @file DonutChart.vue
- * Renders an SVG donut chart showcasing the TTM revenue breakdown for the Magnificent Seven companies.
+ * @file RevenueBreakdown.vue
+ * Renders a responsive SVG donut chart showcasing the TTM revenue breakdown for the Magnificent Seven.
+ * Works with mouse (hover) and touch (tap a slice, tap the empty area to dismiss).
  */
 import { ref, computed } from 'vue'
 import BaseCard from '../layout/BaseCard.vue'
@@ -86,12 +87,12 @@ const slices = computed(() => {
   })
 })
 
-// Hover state management
+// Hover / tap state management
 const bodyRef = ref<HTMLElement | null>(null)
 const hoveredTicker = ref<string | null>(null)
 const tooltipPos = ref({ left: 0, top: 0 })
 
-/** Currently hovered slice object or null. */
+/** Currently hovered or tapped slice object or null. */
 const hoveredSlice = computed(
   () => slices.value.find((s) => s.ticker === hoveredTicker.value) ?? null,
 )
@@ -100,8 +101,8 @@ const hoveredSlice = computed(
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
 
 /**
- * Handles mouse movement over the chart container to calculate tooltip placement.
- * @param e - Mouse event instance
+ * Positions the tooltip near the pointer while keeping it within the card boundaries.
+ * @param e - Pointer/mouse event instance
  */
 const onMove = (e: MouseEvent) => {
   const body = bodyRef.value
@@ -110,7 +111,6 @@ const onMove = (e: MouseEvent) => {
   const mx = e.clientX - rect.left
   const my = e.clientY - rect.top
 
-  // Position tooltip near the mouse while keeping it within the card boundaries
   const flip = mx + TOOLTIP_OFFSET + TOOLTIP_W > rect.width
   const left = flip ? mx - TOOLTIP_OFFSET - TOOLTIP_W : mx + TOOLTIP_OFFSET
   tooltipPos.value = {
@@ -118,18 +118,34 @@ const onMove = (e: MouseEvent) => {
     top: clamp(my - TOOLTIP_H / 2, 0, Math.max(0, rect.height - TOOLTIP_H)),
   }
 }
+
+/**
+ * Activates a slice (mouse enter or tap) and positions the tooltip.
+ * @param ticker - Ticker of the slice
+ * @param e - Pointer event instance
+ */
+const onSelect = (ticker: string, e: PointerEvent) => {
+  hoveredTicker.value = ticker
+  onMove(e)
+}
+
+/** Hides the tooltip when the mouse leaves a slice. Touch pointers keep it until the next tap. */
+const onLeave = (e: PointerEvent) => {
+  if (e.pointerType === 'mouse') hoveredTicker.value = null
+}
 </script>
 
 <template>
   <BaseCard class="breakdown-card">
     <h2 class="title">Revenue Breakdown Magnificent Seven</h2>
 
-    <div ref="bodyRef" class="chart-body" @mousemove="onMove">
+    <div ref="bodyRef" class="chart-body" @pointermove="onMove">
       <svg
         class="donut"
         :viewBox="`0 0 ${SIZE} ${SIZE}`"
         role="img"
         aria-label="Share of TTM revenue per company"
+        @pointerdown.self="hoveredTicker = null"
       >
         <path
           v-for="s in slices"
@@ -138,8 +154,9 @@ const onMove = (e: MouseEvent) => {
           :fill="s.color"
           class="slice"
           :class="{ dimmed: hoveredTicker !== null && hoveredTicker !== s.ticker }"
-          @mouseenter="hoveredTicker = s.ticker"
-          @mouseleave="hoveredTicker = null"
+          @pointerenter="onSelect(s.ticker, $event)"
+          @pointerdown="onSelect(s.ticker, $event)"
+          @pointerleave="onLeave"
         />
       </svg>
 
@@ -204,7 +221,7 @@ const onMove = (e: MouseEvent) => {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 32px;
+  gap: 24px 32px;
 }
 
 .donut {
@@ -242,7 +259,8 @@ const onMove = (e: MouseEvent) => {
   gap: 8px;
 }
 
-.legend .swatch {
+.swatch {
+  flex: none;
   width: 32px;
   height: 12px;
   border: 1px solid #ffffff;
@@ -290,5 +308,20 @@ const onMove = (e: MouseEvent) => {
   align-self: flex-end;
   font-size: 10px;
   color: rgba(255, 255, 255, 0.6);
+}
+
+/* Phone: centered donut with the legend below */
+@media (max-width: 640px) {
+  .breakdown-card {
+    padding: 16px;
+  }
+
+  .title {
+    font-size: 18px;
+  }
+
+  .chart-body {
+    justify-content: center;
+  }
 }
 </style>

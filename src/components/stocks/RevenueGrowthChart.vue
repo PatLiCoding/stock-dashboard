@@ -1,24 +1,41 @@
 <script setup lang="ts">
 /**
  * @file RevenueGrowthChart.vue
- * Renders a grouped vertical bar chart comparing the YoY revenue growth (in %)
+ * Renders a responsive grouped vertical bar chart comparing the YoY revenue growth (in %)
  * of the last four reported quarters for each of the Magnificent Seven.
+ * On narrow containers the legend moves below the plot and company names become tickers.
  */
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import BaseCard from '../layout/BaseCard.vue'
 import stockData from '@/assets/data/stock.json'
 import type { Company } from '@/interface/interface.ts'
 import { getNiceScale, DEFAULT_COLOR } from '@/utils/stock'
+import { useElementWidth } from '@/composables/useElementWidth'
 
-// Chart geometry (viewBox units ≈ px in the 1440px layout)
-const W = 454
-const H = 210
-const M = { top: 6, right: 84, bottom: 24, left: 30 }
-const plotW = W - M.left - M.right
-const plotH = H - M.top - M.bottom
+// Chart geometry (1 viewBox unit = 1 px, width follows the container)
+const MIN_W = 280
+const TOP = 6
+const LEFT = 30
+const PLOT_H = 180
+const BASE_H = TOP + PLOT_H + 24
 
+/** Below this width the legend moves from the right side to below the plot. */
+const LEGEND_BELOW_W = 400
+const LEGEND_ROW_H = 18
+const LEGEND_COL_W = 66
+/** Below this group width the company ticker is shown instead of the full name. */
+const TICKER_BELOW_GROUP_W = 48
 /** Maximum width of a single bar. */
 const MAX_BAR_W = 10
+
+const bodyRef = ref<HTMLElement | null>(null)
+const bodyWidth = useElementWidth(bodyRef, 454)
+const W = computed(() => Math.max(bodyWidth.value, MIN_W))
+
+const legendBelow = computed(() => W.value < LEGEND_BELOW_W)
+const right = computed(() => (legendBelow.value ? 8 : 84))
+const H = computed(() => BASE_H + (legendBelow.value ? 34 : 0))
+const plotW = computed(() => W.value - LEFT - right.value)
 
 /** Legend order: newest quarter first (Q1 2024 ... Q2 2023). */
 const quarters = stockData.quarters.slice(-4).reverse()
@@ -56,12 +73,13 @@ const scale = computed(() => {
   return getNiceScale(Math.min(...values), Math.max(...values), 6)
 })
 
-const groupW = plotW / companies.length
-const barW = Math.min(MAX_BAR_W, (groupW * 0.8) / quarters.length)
-const groupInnerW = barW * quarters.length
+const groupW = computed(() => plotW.value / companies.length)
+const barW = computed(() => Math.min(MAX_BAR_W, (groupW.value * 0.8) / quarters.length))
+const groupInnerW = computed(() => barW.value * quarters.length)
+const useTicker = computed(() => groupW.value < TICKER_BELOW_GROUP_W)
 
 const yPos = (v: number) =>
-  M.top + ((scale.value.max - v) / (scale.value.max - scale.value.min)) * plotH
+  TOP + ((scale.value.max - v) / (scale.value.max - scale.value.min)) * PLOT_H
 
 /** Baseline (value 0) – bars grow up for positive and down for negative values. */
 const y0 = computed(() => yPos(0))
@@ -69,17 +87,27 @@ const barTop = (v: number) => Math.min(yPos(v), y0.value)
 const barHeight = (v: number) => Math.abs(yPos(v) - y0.value)
 
 const barX = (groupIdx: number, barIdx: number) =>
-  M.left + groupIdx * groupW + (groupW - groupInnerW) / 2 + barIdx * barW
+  LEFT + groupIdx * groupW.value + (groupW.value - groupInnerW.value) / 2 + barIdx * barW.value
 
-const LEGEND_ROW_H = 18
 const legendHeight = quarters.length * LEGEND_ROW_H - 8
+
+/** Legend origin: right of the plot (vertically centered) or below it on narrow containers. */
+const legendOrigin = computed(() =>
+  legendBelow.value
+    ? { x: LEFT, y: TOP + PLOT_H + 24 }
+    : { x: W.value - right.value + 14, y: TOP + PLOT_H / 2 - legendHeight / 2 },
+)
+
+/** Position of a legend entry relative to the legend origin. */
+const legendItem = (i: number) =>
+  legendBelow.value ? { x: i * LEGEND_COL_W, y: 0 } : { x: 0, y: i * LEGEND_ROW_H }
 </script>
 
 <template>
   <BaseCard class="growth-chart-card">
     <h2 class="title">Revenue Growth in % YoY</h2>
 
-    <div class="chart-body">
+    <div ref="bodyRef" class="chart-body">
       <svg
         :viewBox="`0 0 ${W} ${H}`"
         preserveAspectRatio="xMidYMid meet"
@@ -89,13 +117,13 @@ const legendHeight = quarters.length * LEGEND_ROW_H - 8
         <!-- Horizontal grid lines + Y labels -->
         <g>
           <template v-for="t in scale.ticks" :key="t">
-            <line :x1="M.left" :x2="M.left + plotW" :y1="yPos(t)" :y2="yPos(t)" class="grid" />
-            <text :x="M.left - 6" :y="yPos(t)" text-anchor="end" class="axis-label label-mid">
+            <line :x1="LEFT" :x2="LEFT + plotW" :y1="yPos(t)" :y2="yPos(t)" class="grid" />
+            <text :x="LEFT - 6" :y="yPos(t)" text-anchor="end" class="axis-label label-mid">
               {{ t }}
             </text>
           </template>
           <!-- Left axis -->
-          <line :x1="M.left" :x2="M.left" :y1="M.top" :y2="M.top + plotH" class="axis-line" />
+          <line :x1="LEFT" :x2="LEFT" :y1="TOP" :y2="TOP + PLOT_H" class="axis-line" />
         </g>
 
         <!-- Grouped bars per company -->
@@ -112,21 +140,25 @@ const legendHeight = quarters.length * LEGEND_ROW_H - 8
           />
 
           <text
-            :x="M.left + gIdx * groupW + groupW / 2"
-            :y="M.top + plotH + 15"
+            :x="LEFT + gIdx * groupW + groupW / 2"
+            :y="TOP + PLOT_H + 15"
             text-anchor="middle"
             class="axis-label"
           >
-            {{ group.name }}
+            {{ useTicker ? group.ticker : group.name }}
           </text>
         </g>
 
         <!-- Baseline on top of the bars -->
-        <line :x1="M.left" :x2="M.left + plotW" :y1="y0" :y2="y0" class="axis-line" />
+        <line :x1="LEFT" :x2="LEFT + plotW" :y1="y0" :y2="y0" class="axis-line" />
 
-        <!-- Legend (vertically centered at the right) -->
-        <g :transform="`translate(${W - M.right + 14}, ${M.top + plotH / 2 - legendHeight / 2})`">
-          <g v-for="(q, i) in quarters" :key="q" :transform="`translate(0, ${i * LEGEND_ROW_H})`">
+        <!-- Legend -->
+        <g :transform="`translate(${legendOrigin.x}, ${legendOrigin.y})`">
+          <g
+            v-for="(q, i) in quarters"
+            :key="q"
+            :transform="`translate(${legendItem(i).x}, ${legendItem(i).y})`"
+          >
             <rect
               x="0"
               y="0"

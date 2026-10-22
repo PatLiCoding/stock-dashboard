@@ -18,8 +18,9 @@ import Header from '@/components/layout/Header.vue'
 .body-content {
   display: flex;
   flex-direction: column;
-  width: 1440px;
-  max-width: 100%;
+  width: 100%;
+  max-width: 1440px;
+  min-width: 0;
   min-height: 100vh;
   gap: 12px;
 }

@@ -1,16 +1,18 @@
 <script setup lang="ts">
 /**
  * @file RevenueCard.vue
- * Renders a horizontal carousel displaying individual stock revenue cards for each company,
+ * Renders a responsive horizontal carousel displaying individual stock revenue cards for each company,
  * including latest quarterly metrics, growth indicators, and smooth scrolling controls.
  */
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import BaseCard from '../layout/BaseCard.vue'
 import stockData from '@/assets/data/stock.json'
 import type { Company } from '@/interface/interface.ts'
+import { useElementWidth } from '@/composables/useElementWidth'
 
 const companies: Company[] = stockData.companies
 const scrollContainer = ref<HTMLElement | null>(null)
+const containerWidth = useElementWidth(scrollContainer, 0)
 
 const canScrollLeft = ref(false)
 const canScrollRight = ref(true)
@@ -52,12 +54,17 @@ const checkScroll = () => {
 }
 
 /**
- * Scrolls the container smoothly by a specified pixel offset.
- * @param left - Pixel amount to scroll horizontally
+ * Scrolls the carousel by roughly one visible page (80 % of the container width).
+ * @param direction - -1 for left, 1 for right
  */
-const scrollBy = (left: number) => {
-  scrollContainer.value?.scrollBy({ left, behavior: 'smooth' })
+const scrollPage = (direction: -1 | 1) => {
+  const el = scrollContainer.value
+  if (!el) return
+  el.scrollBy({ left: direction * el.clientWidth * 0.8, behavior: 'smooth' })
 }
+
+// Re-evaluate the buttons whenever the container is resized
+watch(containerWidth, () => nextTick(checkScroll))
 
 onMounted(() => nextTick(checkScroll))
 </script>
@@ -67,7 +74,7 @@ onMounted(() => nextTick(checkScroll))
     <button
       v-if="canScrollLeft"
       class="scroll-btn left"
-      @click="scrollBy(-300)"
+      @click="scrollPage(-1)"
       aria-label="Previous"
     >
       <span>&#129128;</span>
@@ -95,7 +102,7 @@ onMounted(() => nextTick(checkScroll))
       </BaseCard>
     </div>
 
-    <button v-if="canScrollRight" class="scroll-btn right" @click="scrollBy(300)" aria-label="Next">
+    <button v-if="canScrollRight" class="scroll-btn right" @click="scrollPage(1)" aria-label="Next">
       <span>&#129130;</span>
     </button>
   </div>
@@ -116,6 +123,7 @@ onMounted(() => nextTick(checkScroll))
   gap: 24px;
   overflow-x: auto;
   scroll-behavior: smooth;
+  scroll-snap-type: x proximity;
   width: 100%;
   scrollbar-width: none;
 }
@@ -125,9 +133,12 @@ onMounted(() => nextTick(checkScroll))
 }
 
 .stock-card {
+  flex: none;
   min-width: 140px;
   height: 127px;
   padding: 20px 24px;
+  box-sizing: border-box;
+  scroll-snap-align: start;
 }
 
 .card-header {
@@ -215,5 +226,30 @@ h3 {
 
 .scroll-btn.right {
   right: -18px;
+}
+
+/* Phone: tighter spacing, buttons stay inside the viewport */
+@media (max-width: 640px) {
+  .revenue-carousel-wrapper {
+    padding: 16px;
+    border-radius: 16px;
+  }
+
+  .RevenueCard {
+    gap: 12px;
+  }
+
+  .scroll-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .scroll-btn.left {
+    left: 4px;
+  }
+
+  .scroll-btn.right {
+    right: 4px;
+  }
 }
 </style>

@@ -1,23 +1,29 @@
 <script setup lang="ts">
 /**
  * @file NetIncomeChart.vue
- * Renders a horizontal bar chart displaying Net Income TTM (in Billion USD) for the Magnificent Seven.
+ * Renders a responsive horizontal bar chart displaying Net Income TTM (in Billion USD)
+ * for the Magnificent Seven.
  */
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import BaseCard from '../layout/BaseCard.vue'
 import stockData from '@/assets/data/stock.json'
 import type { Company } from '@/interface/interface.ts'
 import { getTtm, getNiceScale, BLUE_SHADES, DEFAULT_COLOR } from '@/utils/stock'
+import { useElementWidth } from '@/composables/useElementWidth'
 
-// Chart geometry (viewBox units ≈ px in the 1440px layout)
-const W = 354
+// Chart geometry (1 viewBox unit = 1 px, width follows the container)
 const H = 210
+const MIN_W = 260
 const M = { top: 6, right: 8, bottom: 24, left: 62 }
-const plotW = W - M.left - M.right
 const plotH = H - M.top - M.bottom
 
 /** Share of a row's height that is covered by the bar. */
 const BAR_RATIO = 0.74
+
+const bodyRef = ref<HTMLElement | null>(null)
+const bodyWidth = useElementWidth(bodyRef, 354)
+const W = computed(() => Math.max(bodyWidth.value, MIN_W))
+const plotW = computed(() => W.value - M.left - M.right)
 
 const companies: Company[] = stockData.companies
 
@@ -48,7 +54,7 @@ const barH = rowH * BAR_RATIO
 /** Y positions of the horizontal grid lines (one between every row + top/bottom frame). */
 const rowLines = Array.from({ length: rowCount + 1 }, (_, i) => M.top + i * rowH)
 
-const xPos = (v: number) => M.left + (Math.max(0, v) / scale.value.max) * plotW
+const xPos = (v: number) => M.left + (Math.max(0, v) / scale.value.max) * plotW.value
 const barY = (index: number) => M.top + index * rowH + (rowH - barH) / 2
 </script>
 
@@ -56,7 +62,7 @@ const barY = (index: number) => M.top + index * rowH + (rowH - barH) / 2
   <BaseCard class="net-income-card">
     <h2 class="title">Net Income TTM</h2>
 
-    <div class="chart-body">
+    <div ref="bodyRef" class="chart-body">
       <svg
         :viewBox="`0 0 ${W} ${H}`"
         preserveAspectRatio="xMidYMid meet"

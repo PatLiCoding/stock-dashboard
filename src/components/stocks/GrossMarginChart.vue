@@ -1,20 +1,20 @@
 <script setup lang="ts">
 /**
  * @file GrossMarginChart.vue
- * Renders a horizontal bar chart for the gross margin (in %) of the last reported quarter.
- * On hover a tooltip shows the quarter the value originates from.
+ * Renders a responsive horizontal bar chart for the gross margin (in %) of the last reported
+ * quarter. On hover a tooltip shows the quarter the value originates from.
  */
 import { ref, computed } from 'vue'
 import BaseCard from '../layout/BaseCard.vue'
 import stockData from '@/assets/data/stock.json'
 import type { Company } from '@/interface/interface.ts'
 import { BLUE_SHADES, DEFAULT_COLOR } from '@/utils/stock'
+import { useElementWidth } from '@/composables/useElementWidth'
 
-// Chart geometry (viewBox units ≈ px in the 1440px layout)
-const W = 255
+// Chart geometry (1 viewBox unit = 1 px, width follows the container)
 const H = 210
+const MIN_W = 260
 const M = { top: 6, right: 8, bottom: 24, left: 58 }
-const plotW = W - M.left - M.right
 const plotH = H - M.top - M.bottom
 
 /** Share of a row's height that is covered by the bar. */
@@ -28,6 +28,11 @@ const xTicks = [0, 20, 40, 60, 80, 100]
 const TOOLTIP_W = 160
 const TOOLTIP_H = 80
 const TOOLTIP_OFFSET = 14
+
+const bodyRef = ref<HTMLElement | null>(null)
+const bodyWidth = useElementWidth(bodyRef, 255)
+const W = computed(() => Math.max(bodyWidth.value, MIN_W))
+const plotW = computed(() => W.value - M.left - M.right)
 
 const companies: Company[] = stockData.companies
 
@@ -54,12 +59,11 @@ const barH = rowH * BAR_RATIO
 /** Y positions of the horizontal grid lines (one between every row + top/bottom frame). */
 const rowLines = Array.from({ length: rowCount + 1 }, (_, i) => M.top + i * rowH)
 
-const xPos = (v: number) => M.left + (Math.max(0, v) / X_MAX) * plotW
+const xPos = (v: number) => M.left + (Math.max(0, v) / X_MAX) * plotW.value
 const rowY = (index: number) => M.top + index * rowH
 const barY = (index: number) => rowY(index) + (rowH - barH) / 2
 
 // Hover state management
-const bodyRef = ref<HTMLElement | null>(null)
 const hoveredTicker = ref<string | null>(null)
 const tooltipPos = ref({ left: 0, top: 0 })
 

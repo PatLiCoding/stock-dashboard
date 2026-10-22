@@ -1,9 +1,4 @@
-<script setup lang="ts">
-/**
- * @file Header.vue
- * Application header component featuring a decorative design bar and main title text.
- */
-</script>
+<script setup lang="ts"></script>
 
 <template>
   <header class="header">
@@ -15,25 +10,28 @@
 <style scoped>
 .header {
   width: 100%;
+  box-sizing: border-box;
+  padding-right: 16px;
   display: flex;
   justify-content: flex-start;
   align-items: center;
-  gap: 24px;
+  gap: clamp(12px, 2vw, 24px);
 }
 
 img {
-  width: 96px;
+  flex: none;
+  width: clamp(48px, 8vw, 96px);
   height: 32px;
   object-fit: contain;
 }
 
 #heading {
+  margin: 0;
   font-family: Rubik, sans-serif;
   font-weight: 500;
-  font-style: Medium;
-  font-size: 36px;
-  line-height: 100%;
-  letter-spacing: 0%;
+  font-size: clamp(22px, 4vw, 36px);
+  line-height: 1.1;
+  letter-spacing: 0;
   color: white;
 }
 </style>

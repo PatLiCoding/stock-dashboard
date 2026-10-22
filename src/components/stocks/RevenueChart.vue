@@ -1,29 +1,47 @@
 <script setup lang="ts">
 /**
- * @file LineChart.vue
- * Renders a multi-line SVG chart displaying the quarterly revenue of the Magnificent Seven over the last 3 years.
+ * @file RevenueChart.vue
+ * Renders a responsive multi-line SVG chart displaying the quarterly revenue of the Magnificent Seven
+ * over the last 3 years. Geometry follows the container width (1 viewBox unit = 1 px);
+ * on narrow containers the legend moves below the plot and only every 2nd quarter label is shown.
  */
 import { ref, computed } from 'vue'
 import BaseCard from '../layout/BaseCard.vue'
 import stockData from '@/assets/data/stock.json'
 import type { Company } from '@/interface/interface.ts'
 import { getRankColor, getRevenueRanking } from '@/utils/stock'
+import { useElementWidth } from '@/composables/useElementWidth'
 
 /** Number of quarters to display (Last 3 years = Q1 2021 ... Q4 2023). */
 const QUARTER_COUNT = 12
 
-// Chart geometry (viewBox units, SVG scales responsively)
-const W = 520
-const H = 280
+// Chart geometry
+const MIN_W = 280
 const M = { top: 12, right: 12, bottom: 56, left: 36 }
-const plotW = W - M.left - M.right
-const plotH = H - M.top - M.bottom
-const stepX = plotW / (QUARTER_COUNT - 1)
+/** Below this body width the legend moves below the plot. */
+const STACK_BELOW_W = 520
+/** Below this distance between two quarters only every 2nd label is rendered. */
+const LABEL_MIN_STEP = 28
 
 // Tooltip dimensions (px)
 const TOOLTIP_W = 200
 const TOOLTIP_H = 220
 const TOOLTIP_OFFSET = 16
+
+const bodyRef = ref<HTMLElement | null>(null)
+const plotRef = ref<HTMLElement | null>(null)
+const svgRef = ref<SVGSVGElement | null>(null)
+
+const bodyWidth = useElementWidth(bodyRef, 700)
+const plotWidth = useElementWidth(plotRef, 520)
+
+const stacked = computed(() => bodyWidth.value < STACK_BELOW_W)
+const W = computed(() => Math.max(plotWidth.value, MIN_W))
+const H = computed(() => (W.value < 400 ? 240 : 280))
+const plotW = computed(() => W.value - M.left - M.right)
+const plotH = computed(() => H.value - M.top - M.bottom)
+const stepX = computed(() => plotW.value / (QUARTER_COUNT - 1))
+const labelEvery = computed(() => (stepX.value < LABEL_MIN_STEP ? 2 : 1))
 
 const companies: Company[] = stockData.companies
 const quarters = stockData.quarters.slice(0, QUARTER_COUNT)
@@ -57,10 +75,10 @@ const yTicks = computed(() => {
 })
 
 /** Calculates the X position for a given quarter index. */
-const xPos = (i: number) => M.left + i * stepX
+const xPos = (i: number) => M.left + i * stepX.value
 
 /** Calculates the Y position for a given revenue value. */
-const yPos = (v: number) => M.top + plotH - (v / yMax.value) * plotH
+const yPos = (v: number) => M.top + plotH.value - (v / yMax.value) * plotH.value
 
 /** Generates the SVG path string for a line series. */
 const linePath = (values: number[]) =>
@@ -68,9 +86,10 @@ const linePath = (values: number[]) =>
     .map((v, i) => `${i === 0 ? 'M' : 'L'}${xPos(i).toFixed(1)},${yPos(v).toFixed(1)}`)
     .join(' ')
 
+/** Whether the label of the given quarter is rendered (the latest one is always shown). */
+const showLabel = (i: number) => (QUARTER_COUNT - 1 - i) % labelEvery.value === 0
+
 // Hover state management
-const plotRef = ref<HTMLElement | null>(null)
-const svgRef = ref<SVGSVGElement | null>(null)
 const hoverIndex = ref<number | null>(null)
 const tooltipPos = ref({ left: 0, top: 0 })
 
@@ -78,8 +97,9 @@ const tooltipPos = ref({ left: 0, top: 0 })
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
 
 /**
- * Handles mouse movement over the plot area to update the active hover index and tooltip position.
- * @param e - Mouse event instance
+ * Handles pointer movement (mouse or touch) over the plot area to update the active hover index
+ * and tooltip position.
+ * @param e - Pointer/mouse event instance
  */
 const onMove = (e: MouseEvent) => {
   const wrapper = plotRef.value
@@ -90,22 +110,26 @@ const onMove = (e: MouseEvent) => {
   const sr = svg.getBoundingClientRect()
 
   // Determine the nearest quarter on the X-axis
-  const xInView = ((e.clientX - sr.left) / sr.width) * W
-  hoverIndex.value = clamp(Math.round((xInView - M.left) / stepX), 0, QUARTER_COUNT - 1)
+  const xInView = ((e.clientX - sr.left) / sr.width) * W.value
+  hoverIndex.value = clamp(Math.round((xInView - M.left) / stepX.value), 0, QUARTER_COUNT - 1)
 
-  // Position tooltip near the mouse while keeping it within the chart area
+  // Position tooltip near the pointer while keeping it within the chart area
   const mx = e.clientX - wr.left
   const my = e.clientY - wr.top
   const flip = mx + TOOLTIP_OFFSET + TOOLTIP_W > wr.width
+  const left = flip ? mx - TOOLTIP_OFFSET - TOOLTIP_W : mx + TOOLTIP_OFFSET
   tooltipPos.value = {
-    left: flip ? mx - TOOLTIP_OFFSET - TOOLTIP_W : mx + TOOLTIP_OFFSET,
+    left: clamp(left, 0, Math.max(0, wr.width - TOOLTIP_W)),
     top: clamp(my - TOOLTIP_H / 2, 0, Math.max(0, wr.height - TOOLTIP_H)),
   }
 }
 
-/** Resets the hover state when the mouse leaves the plot area. */
-const onLeave = () => {
-  hoverIndex.value = null
+/**
+ * Resets the hover state when the mouse leaves the plot area.
+ * Touch pointers keep their tooltip until the next tap.
+ */
+const onLeave = (e: PointerEvent) => {
+  if (e.pointerType === 'mouse') hoverIndex.value = null
 }
 
 /** Computed rows for the active tooltip sorted by value descending. */
@@ -122,13 +146,14 @@ const tooltipRows = computed(() => {
   <BaseCard class="chart-card">
     <h2 class="title">Revenue last 3 years</h2>
 
-    <div class="chart-body">
+    <div ref="bodyRef" class="chart-body" :class="{ stacked }">
       <div
         ref="plotRef"
         class="plot"
-        @mouseenter="onMove"
-        @mousemove="onMove"
-        @mouseleave="onLeave"
+        @pointerenter="onMove"
+        @pointermove="onMove"
+        @pointerdown="onMove"
+        @pointerleave="onLeave"
       >
         <svg
           ref="svgRef"
@@ -152,6 +177,7 @@ const tooltipRows = computed(() => {
             <template v-for="(q, i) in quarters" :key="q">
               <line :x1="xPos(i)" :x2="xPos(i)" :y1="M.top" :y2="M.top + plotH" class="grid" />
               <text
+                v-if="showLabel(i)"
                 :x="xPos(i)"
                 :y="M.top + plotH + 16"
                 text-anchor="end"
@@ -251,12 +277,20 @@ const tooltipRows = computed(() => {
   align-items: center;
   gap: 20px;
   flex: 1;
+  min-width: 0;
+}
+
+.chart-body.stacked {
+  flex-direction: column;
+  align-items: stretch;
 }
 
 .plot {
   position: relative;
   flex: 1;
   min-width: 0;
+  /* Allow vertical page scroll on touch, horizontal drag scrubs through the quarters */
+  touch-action: pan-y;
 }
 
 svg {
@@ -272,7 +306,7 @@ svg {
 
 .axis-label {
   fill: rgba(255, 255, 255, 0.75);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .line {
@@ -356,16 +390,34 @@ svg {
   color: rgba(255, 255, 255, 0.85);
 }
 
+.stacked .legend {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
 .legend li {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.legend .swatch {
+.swatch {
+  flex: none;
   width: 32px;
   height: 12px;
   border: 1px solid #ffffff;
   border-radius: 2px;
+}
+
+/* Phone */
+@media (max-width: 640px) {
+  .chart-card {
+    padding: 16px;
+  }
+
+  .title {
+    font-size: 18px;
+  }
 }
 </style>

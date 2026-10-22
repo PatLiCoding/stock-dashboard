@@ -4,7 +4,7 @@ A responsive financial dashboard for the "Magnificent Seven" tech companies (App
 
 All charts are hand-built **SVG components** – no charting library is used.
 
-[Dashboard preview](src/assets/img/dashboard.png)
+<img src="src/assets/img/dashboard.png" alt="Screenshot from Dashboard" width="800" height="600">
 
 ## Features
 

@@ -4,8 +4,7 @@ A responsive financial dashboard for the "Magnificent Seven" tech companies (App
 
 All charts are hand-built **SVG components** – no charting library is used.
 
-<!-- Add a screenshot of the dashboard here, e.g.: -->
-<!-- ![Dashboard preview](docs/dashboard.png) -->
+[Dashboard preview](src/assets/img/dashboard.png)
 
 ## Features
 
@@ -41,13 +40,13 @@ npm install
 
 ### Available Scripts
 
-| Command             | Description                                   |
-| ------------------- | --------------------------------------------- |
-| `npm run dev`       | Start the dev server with hot reload          |
-| `npm run build`     | Type-check and build for production           |
-| `npm run preview`   | Preview the production build locally          |
-| `npm run type-check`| Run `vue-tsc` only                            |
-| `npm run format`    | Format `src/` with Prettier                   |
+| Command              | Description                          |
+| -------------------- | ------------------------------------ |
+| `npm run dev`        | Start the dev server with hot reload |
+| `npm run build`      | Type-check and build for production  |
+| `npm run preview`    | Preview the production build locally |
+| `npm run type-check` | Run `vue-tsc` only                   |
+| `npm run format`     | Format `src/` with Prettier          |
 
 ## Project Structure
 
@@ -98,6 +97,5 @@ Tooltips use pointer events, so they work with mouse and touch.
 ## Author
 
 Patricia Linne
-
 
 > **Note:** The UI/UX design and the concept for this project were provided by the **Developer Akademie**. The technical implementation, architecture, and the creation of the custom SVG diagrams were carried out independently.
